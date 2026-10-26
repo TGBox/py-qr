@@ -55,10 +55,13 @@ A lightweight, fast, offline desktop application for Windows using Python 3.11+ 
 
 - [x] Task 12: PyInstaller Packaging Script (`src/build.py`) & Build Verification
 
-### Checkpoint: Final Release [x]
+### Phase 5: Artistic QR Code Styling
 
-- [x] Single-file executable builds cleanly without warnings
-- [x] Executable launches and functions independently
+- [x] Task 13: Artistic Generator & UI Integration (`artistic-qr`)
+  - Modulformen: Quadrat (Standard), Punkte (Dots), Abgerundet (Smooth)
+  - Ecken-Augen: Separate Farbkonfiguration mit Farbwähler
+  - Emblem / Logo: Vektor-Presets (WLAN, Kontakt, Mail, Web, Stern) oder eigene Bilddatei mit Schutzbereich und automatischer Fehlerkorrektur Level H
+  - Volle Übernahme im Aufsteller-Studio (`CardDialog`), PNG/SVG-Export und Zwischenablage
 
 ## Risks and Mitigations
 

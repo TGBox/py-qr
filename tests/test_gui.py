@@ -253,3 +253,54 @@ def test_history_tab_search_and_filter(qtbot, tmp_path):
     idx_all = tab.type_filter.findData("all")
     tab.type_filter.setCurrentIndex(idx_all)
     assert tab.list_widget.count() == 3
+
+
+def test_generator_tab_artistic_styling(qtbot, tmp_path):
+    history_file = tmp_path / "test_history.json"
+    manager = HistoryManager(storage_path=history_file)
+    tab = GeneratorTab(history_manager=manager)
+    qtbot.addWidget(tab)
+
+    # Test shape selection
+    assert tab.combo_shape.count() == 3
+    idx_dots = tab.combo_shape.findData("dot")
+    tab.combo_shape.setCurrentIndex(idx_dots)
+    assert tab.combo_shape.currentData() == "dot"
+
+    # Test finder color setting and button update
+    tab.finder_color = "#e11d48"
+    tab._update_finder_color_button()
+    assert "#E11D48" in tab.btn_finder_color.text()
+
+    # Test logo selection auto-sets error level to 'h'
+    idx_wifi_logo = tab.combo_logo.findData("wifi")
+    tab.combo_logo.setCurrentIndex(idx_wifi_logo)
+    assert tab.combo_logo.currentData() == "wifi"
+    assert tab.combo_error.currentData() == "h"
+
+    # Test reset colors & styles
+    tab._reset_colors()
+    assert tab.dark_color == "#000000"
+    assert tab.light_color == "#ffffff"
+    assert tab.finder_color is None
+    assert tab.combo_shape.currentData() == "square"
+    assert tab.combo_logo.currentData() is None
+    assert "Ecken: Auto" in tab.btn_finder_color.text()
+
+
+def test_card_dialog_with_artistic_styles(qtbot):
+    from src.gui.dialogs.card_dialog import CardDialog
+
+    dialog = CardDialog(
+        qr_data="https://example.com/artistic-card",
+        payload_type="url",
+        shape="rounded",
+        finder_color="#2563eb",
+        logo_icon="star",
+    )
+    qtbot.addWidget(dialog)
+    dialog._update_preview()
+    assert dialog.shape == "rounded"
+    assert dialog.finder_color == "#2563eb"
+    assert dialog.logo_icon == "star"
+    assert dialog.preview_label.pixmap() is not None

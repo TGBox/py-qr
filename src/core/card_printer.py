@@ -1,11 +1,9 @@
 """Card printer module for generating printable WiFi and info stands as PDF and PNG."""
 
-import io
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-import segno
 from PySide6.QtCore import QMarginsF, QRectF, Qt
 from PySide6.QtGui import (
     QColor,
@@ -17,6 +15,8 @@ from PySide6.QtGui import (
     QPdfWriter,
     QPen,
 )
+
+from src.core.generator import generate_qr_png_bytes
 
 
 @dataclass
@@ -31,6 +31,10 @@ class CardConfig:
     page_size: Literal["A6", "A4"] = "A6"
     dark_color: str = "#000000"
     light_color: str = "#ffffff"
+    shape: str = "square"
+    finder_color: str | None = None
+    logo_icon: str | None = None
+    logo_image_path: Path | str | None = None
 
 
 def _get_pixel_dimensions(page_size: str, dpi: int) -> tuple[int, int]:
@@ -42,13 +46,30 @@ def _get_pixel_dimensions(page_size: str, dpi: int) -> tuple[int, int]:
     return w_px, h_px
 
 
-def _generate_qr_image(data: str, dark_color: str, light_color: str) -> QImage:
-    """Generate high-resolution QImage of QR code using segno."""
-    qr = segno.make(data or "https://py-qr.local", error="h")
-    buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=16, border=1, dark=dark_color, light=light_color)
+def _generate_qr_image(
+    data: str,
+    dark_color: str,
+    light_color: str,
+    shape: str = "square",
+    finder_color: str | None = None,
+    logo_icon: str | None = None,
+    logo_image_path: Path | str | None = None,
+) -> QImage:
+    """Generate high-resolution QImage of QR code using generate_qr_png_bytes."""
+    png_bytes = generate_qr_png_bytes(
+        data=data or "https://py-qr.local",
+        error_level="h",
+        dark_color=dark_color,
+        light_color=light_color,
+        scale=16,
+        border=1,
+        shape=shape,  # type: ignore[arg-type]
+        finder_color=finder_color,
+        logo_icon=logo_icon,
+        logo_image_path=logo_image_path,
+    )
     img = QImage()
-    img.loadFromData(buf.getvalue(), "PNG")
+    img.loadFromData(png_bytes, "PNG")
     return img
 
 
@@ -190,7 +211,15 @@ def render_card_to_image(config: CardConfig, dpi: int = 300) -> QImage:
     image.setDotsPerMeterX(int(dpi / 0.0254))
     image.setDotsPerMeterY(int(dpi / 0.0254))
 
-    qr_img = _generate_qr_image(config.qr_data, config.dark_color, config.light_color)
+    qr_img = _generate_qr_image(
+        config.qr_data,
+        config.dark_color,
+        config.light_color,
+        config.shape,
+        config.finder_color,
+        config.logo_icon,
+        config.logo_image_path,
+    )
 
     painter = QPainter(image)
     try:
@@ -222,7 +251,15 @@ def render_card_to_pdf(config: CardConfig, target_path: Path) -> None:
     writer.setResolution(300)
 
     width, height = _get_pixel_dimensions(config.page_size, dpi=300)
-    qr_img = _generate_qr_image(config.qr_data, config.dark_color, config.light_color)
+    qr_img = _generate_qr_image(
+        config.qr_data,
+        config.dark_color,
+        config.light_color,
+        config.shape,
+        config.finder_color,
+        config.logo_icon,
+        config.logo_image_path,
+    )
 
     painter = QPainter(writer)
     try:

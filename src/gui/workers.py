@@ -44,6 +44,10 @@ class GenerateWorker(QThread):
         light_color: str = "#ffffff",
         scale: int = 10,
         border: int = 4,
+        shape: str = "square",
+        finder_color: str | None = None,
+        logo_icon: str | None = None,
+        logo_image_path: Path | str | None = None,
     ):
         super().__init__()
         self.data = data
@@ -52,6 +56,10 @@ class GenerateWorker(QThread):
         self.light_color = light_color
         self.scale = scale
         self.border = border
+        self.shape = shape
+        self.finder_color = finder_color
+        self.logo_icon = logo_icon
+        self.logo_image_path = logo_image_path
 
     def run(self) -> None:
         try:
@@ -66,6 +74,10 @@ class GenerateWorker(QThread):
                 light_color=self.light_color,
                 scale=self.scale,
                 border=self.border,
+                shape=self.shape,  # type: ignore[arg-type]
+                finder_color=self.finder_color,
+                logo_icon=self.logo_icon,
+                logo_image_path=self.logo_image_path,
             )
             self.success.emit(png_bytes)
         except Exception as e:  # noqa: BLE001

@@ -49,6 +49,8 @@ class GeneratorTab(QWidget):
 
         self.dark_color = "#000000"
         self.light_color = "#ffffff"
+        self.finder_color: str | None = None
+        self.custom_logo_path: Path | None = None
         self.current_png_bytes: bytes | None = None
         self.active_worker: GenerateWorker | None = None
 
@@ -230,12 +232,38 @@ class GeneratorTab(QWidget):
         self._update_color_button(self.btn_light_color, self.light_color, "Hintergrund")
         colors_layout.addWidget(self.btn_light_color)
 
+        self.btn_finder_color = QPushButton("Ecken: Auto")
+        self.btn_finder_color.setObjectName("secondaryButton")
+        self._update_finder_color_button()
+        colors_layout.addWidget(self.btn_finder_color)
+
         self.btn_reset_colors = QPushButton("↺")
         self.btn_reset_colors.setObjectName("secondaryButton")
-        self.btn_reset_colors.setToolTip("Farben auf Standard zurücksetzen")
+        self.btn_reset_colors.setToolTip("Gestaltung und Farben zurücksetzen")
         self.btn_reset_colors.setMaximumWidth(36)
         colors_layout.addWidget(self.btn_reset_colors)
         style_layout.addLayout(colors_layout)
+
+        # Module Shape & Logo Options
+        artistic_row = QHBoxLayout()
+        artistic_row.addWidget(QLabel("Form:"))
+        self.combo_shape = QComboBox()
+        self.combo_shape.addItem("Quadrat (Klassisch)", "square")
+        self.combo_shape.addItem("Punkte (Dots)", "dot")
+        self.combo_shape.addItem("Abgerundet (Smooth)", "rounded")
+        artistic_row.addWidget(self.combo_shape)
+
+        artistic_row.addWidget(QLabel("Logo / Emblem:"))
+        self.combo_logo = QComboBox()
+        self.combo_logo.addItem("Kein Logo", None)
+        self.combo_logo.addItem("📶 WLAN", "wifi")
+        self.combo_logo.addItem("👤 Kontakt", "contact")
+        self.combo_logo.addItem("✉️ E-Mail", "email")
+        self.combo_logo.addItem("🌐 Webadresse", "url")
+        self.combo_logo.addItem("⭐ Stern", "star")
+        self.combo_logo.addItem("📁 Eigenes Bild...", "custom")
+        artistic_row.addWidget(self.combo_logo)
+        style_layout.addLayout(artistic_row)
 
         error_layout = QHBoxLayout()
         error_layout.addWidget(QLabel("Fehlerkorrektur:"))
@@ -243,7 +271,7 @@ class GeneratorTab(QWidget):
         self.combo_error.addItem("M (15% — Standard)", "m")
         self.combo_error.addItem("L (7% — Kompakt)", "l")
         self.combo_error.addItem("Q (25% — Robust)", "q")
-        self.combo_error.addItem("H (30% — Maximal / Druck)", "h")
+        self.combo_error.addItem("H (30% — Maximal / Logo)", "h")
         self.combo_error.setCurrentIndex(0)
         error_layout.addWidget(self.combo_error)
         style_layout.addLayout(error_layout)
@@ -330,9 +358,12 @@ class GeneratorTab(QWidget):
         self.email_body.textChanged.connect(self._trigger_update)
 
         self.combo_error.currentIndexChanged.connect(self._trigger_update)
+        self.combo_shape.currentIndexChanged.connect(self._trigger_update)
+        self.combo_logo.currentIndexChanged.connect(self._on_logo_changed)
 
         self.btn_dark_color.clicked.connect(self._pick_dark_color)
         self.btn_light_color.clicked.connect(self._pick_light_color)
+        self.btn_finder_color.clicked.connect(self._pick_finder_color)
         self.btn_reset_colors.clicked.connect(self._reset_colors)
 
         self.btn_copy_clipboard.clicked.connect(self._copy_to_clipboard)
@@ -346,11 +377,20 @@ class GeneratorTab(QWidget):
             QMessageBox.warning(self, "Hinweis", "Bitte gib zuerst Daten für den QR-Code ein.")
             return
 
+        shape = self.combo_shape.currentData() or "square"
+        logo_data = self.combo_logo.currentData()
+        logo_icon = logo_data if logo_data not in (None, "custom") else None
+        logo_path = self.custom_logo_path if logo_data == "custom" else None
+
         dialog = CardDialog(
             qr_data=payload,
             payload_type=ptype,
             dark_color=self.dark_color,
             light_color=self.light_color,
+            shape=shape,
+            finder_color=self.finder_color,
+            logo_icon=logo_icon,
+            logo_image_path=logo_path,
             parent=self,
         )
         dialog.exec()
@@ -395,11 +435,23 @@ class GeneratorTab(QWidget):
         btn.setText(f"{label}: {color_hex.upper()}")
         btn.setStyleSheet("")
 
+    def _update_finder_color_button(self) -> None:
+        """Update finder pattern color button label and icon."""
+        if self.finder_color:
+            self.btn_finder_color.setIcon(self._create_color_icon(self.finder_color))
+            self.btn_finder_color.setText(f"Ecken: {self.finder_color.upper()}")
+        else:
+            self.btn_finder_color.setIcon(self._create_color_icon(self.dark_color))
+            self.btn_finder_color.setText("Ecken: Auto")
+        self.btn_finder_color.setStyleSheet("")
+
     def _pick_dark_color(self) -> None:
         color = QColorDialog.getColor(QColor(self.dark_color), self, "Vordergrundfarbe wählen")
         if color.isValid():
             self.dark_color = color.name()
             self._update_color_button(self.btn_dark_color, self.dark_color, "Vordergrund")
+            if not self.finder_color:
+                self._update_finder_color_button()
             self._trigger_update()
 
     def _pick_light_color(self) -> None:
@@ -412,11 +464,54 @@ class GeneratorTab(QWidget):
             )
             self._trigger_update()
 
+    def _pick_finder_color(self) -> None:
+        init_col = self.finder_color or self.dark_color
+        color = QColorDialog.getColor(QColor(init_col), self, "Ecken-Augen Farbe wählen")
+        if color.isValid():
+            self.finder_color = color.name()
+            self._update_finder_color_button()
+            self._trigger_update()
+
+    def _on_logo_changed(self) -> None:
+        data = self.combo_logo.currentData()
+        if data == "custom":
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Logo-Bild für QR-Code auswählen",
+                "",
+                "Bilddateien (*.png *.jpg *.jpeg *.webp *.bmp *.svg)",
+            )
+            if file_path:
+                self.custom_logo_path = Path(file_path)
+                self.combo_logo.setItemText(6, f"📁 {self.custom_logo_path.name[:18]}")
+            else:
+                if not self.custom_logo_path:
+                    self.combo_logo.setCurrentIndex(0)
+                    return
+        elif data is None:
+            self.custom_logo_path = None
+            self.combo_logo.setItemText(6, "📁 Eigenes Bild...")
+
+        # Automatically elevate error correction to 'h' for reliable scanability
+        if self.combo_logo.currentData() is not None:
+            for i in range(self.combo_error.count()):
+                if self.combo_error.itemData(i) == "h":
+                    self.combo_error.setCurrentIndex(i)
+                    break
+
+        self._trigger_update()
+
     def _reset_colors(self) -> None:
         self.dark_color = "#000000"
         self.light_color = "#ffffff"
+        self.finder_color = None
+        self.custom_logo_path = None
         self._update_color_button(self.btn_dark_color, self.dark_color, "Vordergrund")
         self._update_color_button(self.btn_light_color, self.light_color, "Hintergrund")
+        self._update_finder_color_button()
+        self.combo_shape.setCurrentIndex(0)
+        self.combo_logo.setCurrentIndex(0)
+        self.combo_logo.setItemText(6, "📁 Eigenes Bild...")
         self.preview_frame.setStyleSheet(
             "background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;"
         )
@@ -489,6 +584,11 @@ class GeneratorTab(QWidget):
             self.active_worker.terminate()
             self.active_worker.wait()
 
+        shape = self.combo_shape.currentData() or "square"
+        logo_data = self.combo_logo.currentData()
+        logo_icon = logo_data if logo_data not in (None, "custom") else None
+        logo_path = self.custom_logo_path if logo_data == "custom" else None
+
         self.active_worker = GenerateWorker(
             data=payload,
             error_level=error_level,
@@ -496,6 +596,10 @@ class GeneratorTab(QWidget):
             light_color=self.light_color,
             scale=8,
             border=3,
+            shape=shape,
+            finder_color=self.finder_color,
+            logo_icon=logo_icon,
+            logo_image_path=logo_path,
         )
         self.active_worker.success.connect(self._on_generation_success)
         self.active_worker.failed.connect(self._on_generation_failed)
@@ -551,6 +655,11 @@ class GeneratorTab(QWidget):
         )
         if file_path:
             error_level = self.combo_error.currentData() or "m"
+            shape = self.combo_shape.currentData() or "square"
+            logo_data = self.combo_logo.currentData()
+            logo_icon = logo_data if logo_data not in (None, "custom") else None
+            logo_path = self.custom_logo_path if logo_data == "custom" else None
+
             save_qr_code(
                 data=payload,
                 target_path=Path(file_path),
@@ -558,6 +667,10 @@ class GeneratorTab(QWidget):
                 dark_color=self.dark_color,
                 light_color=self.light_color,
                 scale=12,
+                shape=shape,
+                finder_color=self.finder_color,
+                logo_icon=logo_icon,
+                logo_image_path=logo_path,
             )
             self.history_manager.add_item("generate", ptype, title, payload)
             self.status_message.emit(f"Gespeichert: {Path(file_path).name}", 3000)
@@ -576,11 +689,20 @@ class GeneratorTab(QWidget):
         )
         if file_path:
             error_level = self.combo_error.currentData() or "m"
+            shape = self.combo_shape.currentData() or "square"
+            logo_data = self.combo_logo.currentData()
+            logo_icon = logo_data if logo_data not in (None, "custom") else None
+            logo_path = self.custom_logo_path if logo_data == "custom" else None
+
             svg_content = generate_qr_svg(
                 data=payload,
                 error_level=error_level,
                 dark_color=self.dark_color,
                 light_color=self.light_color,
+                shape=shape,
+                finder_color=self.finder_color,
+                logo_icon=logo_icon,
+                logo_image_path=logo_path,
             )
             Path(file_path).write_text(svg_content, encoding="utf-8")
             self.history_manager.add_item("generate", ptype, title, payload)
