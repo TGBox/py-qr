@@ -14,9 +14,9 @@ Eine saubere Zwei-Reiter-PySide6-Applikation ("Generieren" & "Lesen") mit Fokus 
 
 ## Key Assumptions to Validate
 
-- [ ] `zxing-cpp` lässt sich unter Windows via PyInstaller ohne fehlende Laufzeit-DLLs als Standalone-Exe bauen.
-- [ ] Bilddaten aus der Windows-Zwischenablage (QClipboard / Pillow / Qt Image) lassen sich zuverlässig und ohne Qualitätsverlust an den Decoder übergeben.
-- [ ] Live-Rendering mit `segno` bleibt bei Textänderungen unter 50ms Reaktionszeit.
+- [x] `zxing-cpp` lässt sich unter Windows via PyInstaller ohne fehlende Laufzeit-DLLs als Standalone-Exe bauen.
+- [x] Bilddaten aus der Windows-Zwischenablage (QClipboard / Pillow / Qt Image) lassen sich zuverlässig und ohne Qualitätsverlust an den Decoder übergeben.
+- [x] Live-Rendering mit `segno` bleibt bei Textänderungen unter 50ms Reaktionszeit.
 
 ## MVP Scope (Phase 1)
 
@@ -28,13 +28,15 @@ Eine saubere Zwei-Reiter-PySide6-Applikation ("Generieren" & "Lesen") mit Fokus 
 - [x] Lokale Historie der letzten 20 Einträge (mit "Löschen"-Option).
 - [x] PyInstaller Build-Skript zur Erstellung einer portablen Single-File `.exe`.
 
-## Not Doing (in Phase 1)
+## Phase 2 Scope (Smart Formats & Print Studio)
+
+- [x] Erweiterte Smart-Formate: Visitenkarte (vCard 3.0), E-Mail (`mailto:`) und Geo-Standort (`geo:`).
+- [x] Reader Smart-Actions: "Als .vcf speichern", "E-Mail verfassen", "In Google Maps öffnen", "In Generator laden".
+- [x] Druckfertiges Kärtchen-Studio (`CardDialog` & `card_printer`): DIN A6/A4 Aufsteller mit Live-Druckvorschau, PDF- & 300 DPI PNG-Export.
+- [x] Privacy & Erweiterte Historie: WLAN-Passwörter im Verlauf maskieren, Echtzeit-Suchleiste, Typ-Filter und CSV/JSON-Export.
+
+## Not Doing
 
 - Webcam-Live-Scanning (vermeidet OpenCV / QtMultimedia Overhead).
 - Eigener Bildschirm-Snipper (Windows `Win+Shift+S` + `Strg+V` in der App ist schneller).
-- Druck-Aufsteller / DIN-Kärtchen-Generator (vorgemerkt für v2).
-- Verschlüsselte Passwort-Datenbank oder Cloud-Sync.
-
-## Open Questions
-
-- Gibt es spezifische Farb- oder Design-Wünsche (z. B. Fluent/Windows 11 Look vs. schlichtes High-Contrast Qt)?
+- Verschlüsselte Passwort-Datenbank oder Cloud-Sync (Offline-First Privacy Garantie).

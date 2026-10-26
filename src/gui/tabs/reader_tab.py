@@ -20,7 +20,11 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.history import HistoryManager
-from src.core.parser import PayloadType, ScanResult
+from src.core.parser import (
+    PayloadType,
+    ScanResult,
+    format_email_payload,
+)
 from src.gui.workers import DecodeWorker
 
 
@@ -58,6 +62,8 @@ class ReaderTab(QWidget):
 
     status_message = Signal(str, int)
     request_load_wifi = Signal(object)  # WifiConfig
+    request_load_vcard = Signal(object)  # VCardConfig
+    request_load_email = Signal(object)  # EmailConfig
 
     def __init__(self, history_manager: HistoryManager, parent: QWidget | None = None):
         super().__init__(parent)
@@ -205,6 +211,93 @@ class ReaderTab(QWidget):
         text_layout.addLayout(text_btn_row)
         self.result_stack.addWidget(text_page)
 
+        # Page 4: vCard Result
+        vcard_page = QWidget()
+        vcard_layout = QVBoxLayout(vcard_page)
+        vcard_layout.setContentsMargins(0, 0, 0, 0)
+        vcard_layout.setSpacing(10)
+
+        vcard_badge = QLabel("👤 Visitenkarte (vCard)")
+        vcard_badge.setStyleSheet("color: #8b5cf6; font-weight: bold; font-size: 14px;")
+        vcard_layout.addWidget(vcard_badge)
+
+        self.vcard_details_label = QLabel()
+        self.vcard_details_label.setTextFormat(Qt.TextFormat.RichText)
+        self.vcard_details_label.setStyleSheet("font-size: 14px; line-height: 1.6;")
+        vcard_layout.addWidget(self.vcard_details_label)
+
+        vcard_btn_row = QHBoxLayout()
+        self.btn_save_vcf = QPushButton("💾 Als Kontakt (.vcf) speichern")
+        self.btn_copy_vcard_phone = QPushButton("📞 Telefon kopieren")
+        self.btn_copy_vcard_phone.setObjectName("secondaryButton")
+        self.btn_copy_vcard_email = QPushButton("✉️ E-Mail kopieren")
+        self.btn_copy_vcard_email.setObjectName("secondaryButton")
+        self.btn_transfer_vcard = QPushButton("⚡ In Generator laden")
+        self.btn_transfer_vcard.setObjectName("secondaryButton")
+
+        vcard_btn_row.addWidget(self.btn_save_vcf)
+        vcard_btn_row.addWidget(self.btn_copy_vcard_phone)
+        vcard_btn_row.addWidget(self.btn_copy_vcard_email)
+        vcard_btn_row.addWidget(self.btn_transfer_vcard)
+        vcard_btn_row.addStretch()
+        vcard_layout.addLayout(vcard_btn_row)
+        self.result_stack.addWidget(vcard_page)
+
+        # Page 5: Email Result
+        email_page = QWidget()
+        email_layout = QVBoxLayout(email_page)
+        email_layout.setContentsMargins(0, 0, 0, 0)
+        email_layout.setSpacing(10)
+
+        email_badge = QLabel("✉️ E-Mail Entwurf")
+        email_badge.setStyleSheet("color: #06b6d4; font-weight: bold; font-size: 14px;")
+        email_layout.addWidget(email_badge)
+
+        self.email_details_label = QLabel()
+        self.email_details_label.setTextFormat(Qt.TextFormat.RichText)
+        self.email_details_label.setStyleSheet("font-size: 14px; line-height: 1.6;")
+        email_layout.addWidget(self.email_details_label)
+
+        email_btn_row = QHBoxLayout()
+        self.btn_open_email = QPushButton("🚀 E-Mail schreiben")
+        self.btn_copy_email_addr = QPushButton("📋 Adresse kopieren")
+        self.btn_copy_email_addr.setObjectName("secondaryButton")
+        self.btn_transfer_email = QPushButton("⚡ In Generator laden")
+        self.btn_transfer_email.setObjectName("secondaryButton")
+
+        email_btn_row.addWidget(self.btn_open_email)
+        email_btn_row.addWidget(self.btn_copy_email_addr)
+        email_btn_row.addWidget(self.btn_transfer_email)
+        email_btn_row.addStretch()
+        email_layout.addLayout(email_btn_row)
+        self.result_stack.addWidget(email_page)
+
+        # Page 6: Geo Result
+        geo_page = QWidget()
+        geo_layout = QVBoxLayout(geo_page)
+        geo_layout.setContentsMargins(0, 0, 0, 0)
+        geo_layout.setSpacing(10)
+
+        geo_badge = QLabel("📍 Standort / Koordinaten")
+        geo_badge.setStyleSheet("color: #ef4444; font-weight: bold; font-size: 14px;")
+        geo_layout.addWidget(geo_badge)
+
+        self.geo_details_label = QLabel()
+        self.geo_details_label.setTextFormat(Qt.TextFormat.RichText)
+        self.geo_details_label.setStyleSheet("font-size: 14px; line-height: 1.6;")
+        geo_layout.addWidget(self.geo_details_label)
+
+        geo_btn_row = QHBoxLayout()
+        self.btn_open_maps = QPushButton("🗺️ In Google Maps öffnen")
+        self.btn_copy_coords = QPushButton("📋 Koordinaten kopieren")
+        self.btn_copy_coords.setObjectName("secondaryButton")
+
+        geo_btn_row.addWidget(self.btn_open_maps)
+        geo_btn_row.addWidget(self.btn_copy_coords)
+        geo_btn_row.addStretch()
+        geo_layout.addLayout(geo_btn_row)
+        self.result_stack.addWidget(geo_page)
+
         result_group_layout.addWidget(self.result_stack)
         layout.addWidget(self.result_group, stretch=1)
 
@@ -219,6 +312,18 @@ class ReaderTab(QWidget):
         self.btn_copy_wifi_pass.clicked.connect(self._copy_wifi_password)
         self.btn_copy_wifi_ssid.clicked.connect(self._copy_wifi_ssid)
         self.btn_transfer_wifi.clicked.connect(self._transfer_wifi_to_generator)
+
+        self.btn_save_vcf.clicked.connect(self._save_vcf)
+        self.btn_copy_vcard_phone.clicked.connect(self._copy_vcard_phone)
+        self.btn_copy_vcard_email.clicked.connect(self._copy_vcard_email)
+        self.btn_transfer_vcard.clicked.connect(self._transfer_vcard_to_generator)
+
+        self.btn_open_email.clicked.connect(self._open_email_client)
+        self.btn_copy_email_addr.clicked.connect(self._copy_email_address)
+        self.btn_transfer_email.clicked.connect(self._transfer_email_to_generator)
+
+        self.btn_open_maps.clicked.connect(self._open_maps)
+        self.btn_copy_coords.clicked.connect(self._copy_geo_coords)
 
         self.btn_copy_text.clicked.connect(self._copy_text)
 
@@ -319,6 +424,39 @@ class ReaderTab(QWidget):
             )
             self.status_message.emit("WLAN-Zugangsdaten dekodiert", 3000)
 
+        elif result.payload_type == PayloadType.VCARD and result.vcard_config:
+            self.result_stack.setCurrentIndex(4)
+            vc = result.vcard_config
+            name = f"{vc.first_name} {vc.last_name}".strip()
+            self.vcard_details_label.setText(
+                f"<b>Name:</b> {name or '<i>(Kein Name)</i>'}<br>"
+                f"<b>Organisation:</b> {vc.organization or '—'}<br>"
+                f"<b>Telefon:</b> {vc.phone or '—'}<br>"
+                f"<b>E-Mail:</b> {vc.email or '—'}<br>"
+                f"<b>Webseite:</b> {vc.url or '—'}"
+            )
+            self.status_message.emit("Visitenkarte (vCard) dekodiert", 3000)
+
+        elif result.payload_type == PayloadType.EMAIL and result.email_config:
+            self.result_stack.setCurrentIndex(5)
+            em = result.email_config
+            self.email_details_label.setText(
+                f"<b>Empfänger:</b> {em.to or '—'}<br>"
+                f"<b>Betreff:</b> {em.subject or '—'}<br>"
+                f"<b>Text:</b> <i>{em.body[:120] + ('...' if len(em.body) > 120 else '') or '—'}</i>"
+            )
+            self.status_message.emit("E-Mail Entwurf dekodiert", 3000)
+
+        elif result.payload_type == PayloadType.GEO and result.geo_config:
+            self.result_stack.setCurrentIndex(6)
+            gc = result.geo_config
+            self.geo_details_label.setText(
+                f"<b>Breitengrad (Lat):</b> {gc.latitude:.6f}<br>"
+                f"<b>Längengrad (Lon):</b> {gc.longitude:.6f}<br>"
+                f"<b>Ort / Beschreibung:</b> {gc.query or '—'}"
+            )
+            self.status_message.emit("Geo-Koordinaten dekodiert", 3000)
+
         else:
             self.result_stack.setCurrentIndex(3)
             self.text_display.setPlainText(result.raw_text)
@@ -354,6 +492,73 @@ class ReaderTab(QWidget):
         if self.last_result and self.last_result.wifi_config:
             self.request_load_wifi.emit(self.last_result.wifi_config)
             self.status_message.emit("WLAN-Daten in Generator übertragen", 2000)
+
+    def _save_vcf(self) -> None:
+        if self.last_result and self.last_result.vcard_config:
+            vc = self.last_result.vcard_config
+            name = f"{vc.first_name}_{vc.last_name}".strip("_") or "kontakt"
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Visitenkarte speichern",
+                f"{name}.vcf",
+                "vCard Datei (*.vcf)",
+            )
+            if file_path:
+                Path(file_path).write_text(self.last_result.raw_text, encoding="utf-8")
+                self.status_message.emit(f"Gespeichert: {Path(file_path).name}", 2500)
+
+    def _copy_vcard_phone(self) -> None:
+        if self.last_result and self.last_result.vcard_config:
+            phone = self.last_result.vcard_config.phone
+            if phone:
+                QApplication.clipboard().setText(phone)
+                self.status_message.emit("Telefonnummer kopiert!", 2000)
+
+    def _copy_vcard_email(self) -> None:
+        if self.last_result and self.last_result.vcard_config:
+            email = self.last_result.vcard_config.email
+            if email:
+                QApplication.clipboard().setText(email)
+                self.status_message.emit("E-Mail-Adresse kopiert!", 2000)
+
+    def _transfer_vcard_to_generator(self) -> None:
+        if self.last_result and self.last_result.vcard_config:
+            self.request_load_vcard.emit(self.last_result.vcard_config)
+            self.status_message.emit("Kontaktdaten in Generator geladen", 2000)
+
+    def _open_email_client(self) -> None:
+        if self.last_result and self.last_result.email_config:
+            em = self.last_result.email_config
+            mail_uri = format_email_payload(em)
+            QDesktopServices.openUrl(QUrl(mail_uri))
+            self.status_message.emit("E-Mail-Programm aufgerufen", 2000)
+
+    def _copy_email_address(self) -> None:
+        if self.last_result and self.last_result.email_config:
+            addr = self.last_result.email_config.to
+            if addr:
+                QApplication.clipboard().setText(addr)
+                self.status_message.emit("E-Mail-Adresse kopiert!", 2000)
+
+    def _transfer_email_to_generator(self) -> None:
+        if self.last_result and self.last_result.email_config:
+            self.request_load_email.emit(self.last_result.email_config)
+            self.status_message.emit("E-Mail-Daten in Generator geladen", 2000)
+
+    def _open_maps(self) -> None:
+        if self.last_result and self.last_result.geo_config:
+            gc = self.last_result.geo_config
+            maps_url = (
+                f"https://www.google.com/maps/search/?api=1&query={gc.latitude},{gc.longitude}"
+            )
+            QDesktopServices.openUrl(QUrl(maps_url))
+            self.status_message.emit("Google Maps geöffnet", 2000)
+
+    def _copy_geo_coords(self) -> None:
+        if self.last_result and self.last_result.geo_config:
+            gc = self.last_result.geo_config
+            QApplication.clipboard().setText(f"{gc.latitude:.6f}, {gc.longitude:.6f}")
+            self.status_message.emit("Koordinaten kopiert!", 2000)
 
     def _copy_text(self) -> None:
         if self.last_result:
