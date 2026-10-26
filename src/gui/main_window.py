@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.history import HistoryManager
-from src.core.parser import WifiConfig
+from src.core.parser import EmailConfig, VCardConfig, WifiConfig
 from src.gui.tabs.generator_tab import GeneratorTab
 from src.gui.tabs.history_tab import HistoryTab
 from src.gui.tabs.reader_tab import ReaderTab
@@ -46,6 +46,8 @@ class MainWindow(QMainWindow):
         self.reader_tab = ReaderTab(self.history_manager)
         self.reader_tab.status_message.connect(self.status_bar_message)
         self.reader_tab.request_load_wifi.connect(self._transfer_wifi_to_generator)
+        self.reader_tab.request_load_vcard.connect(self._transfer_vcard_to_generator)
+        self.reader_tab.request_load_email.connect(self._transfer_email_to_generator)
         self.tabs.addTab(self.reader_tab, "🔍 Lesen")
 
         self.history_tab = HistoryTab(self.history_manager)
@@ -65,6 +67,19 @@ class MainWindow(QMainWindow):
         self.generator_tab.load_wifi_data(config)
         self.tabs.setCurrentIndex(0)
         self.status_bar_message(f"WLAN '{config.ssid}' in Generator geladen", 3000)
+
+    def _transfer_vcard_to_generator(self, config: VCardConfig) -> None:
+        """Load scanned vCard config into Generator tab and switch to it."""
+        self.generator_tab.load_vcard_data(config)
+        self.tabs.setCurrentIndex(0)
+        name = f"{config.first_name} {config.last_name}".strip()
+        self.status_bar_message(f"Kontakt '{name or 'vCard'}' in Generator geladen", 3000)
+
+    def _transfer_email_to_generator(self, config: EmailConfig) -> None:
+        """Load scanned Email config into Generator tab and switch to it."""
+        self.generator_tab.load_email_data(config)
+        self.tabs.setCurrentIndex(0)
+        self.status_bar_message(f"E-Mail an '{config.to}' in Generator geladen", 3000)
 
     def _setup_menus(self) -> None:
         menubar = self.menuBar()

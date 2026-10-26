@@ -26,7 +26,15 @@ from PySide6.QtWidgets import (
 
 from src.core.generator import generate_qr_svg, save_qr_code
 from src.core.history import HistoryManager
-from src.core.parser import WifiConfig, format_wifi_payload
+from src.core.parser import (
+    EmailConfig,
+    VCardConfig,
+    WifiConfig,
+    format_email_payload,
+    format_vcard_payload,
+    format_wifi_payload,
+)
+from src.gui.dialogs.card_dialog import CardDialog
 from src.gui.workers import GenerateWorker
 
 
@@ -72,9 +80,13 @@ class GeneratorTab(QWidget):
         mode_layout = QHBoxLayout(mode_group)
         self.radio_text = QRadioButton("Freitext / URL")
         self.radio_text.setChecked(True)
-        self.radio_wifi = QRadioButton("WLAN-Netzwerk")
+        self.radio_wifi = QRadioButton("WLAN")
+        self.radio_vcard = QRadioButton("Visitenkarte (vCard)")
+        self.radio_email = QRadioButton("E-Mail")
         mode_layout.addWidget(self.radio_text)
         mode_layout.addWidget(self.radio_wifi)
+        mode_layout.addWidget(self.radio_vcard)
+        mode_layout.addWidget(self.radio_email)
         mode_layout.addStretch()
         left_layout.addWidget(mode_group)
 
@@ -118,6 +130,85 @@ class GeneratorTab(QWidget):
         wifi_layout.addWidget(self.wifi_hidden)
         wifi_layout.addStretch()
         self.input_stack.addWidget(wifi_page)
+
+        # Page 2: vCard template
+        vcard_page = QWidget()
+        vcard_layout = QVBoxLayout(vcard_page)
+        vcard_layout.setContentsMargins(0, 0, 0, 0)
+        vcard_layout.setSpacing(6)
+
+        name_row = QHBoxLayout()
+        name_left = QVBoxLayout()
+        name_left.addWidget(QLabel("Vorname:"))
+        self.vcard_first_name = QLineEdit()
+        self.vcard_first_name.setPlaceholderText("z.B. Max")
+        name_left.addWidget(self.vcard_first_name)
+        name_right = QVBoxLayout()
+        name_right.addWidget(QLabel("Nachname:"))
+        self.vcard_last_name = QLineEdit()
+        self.vcard_last_name.setPlaceholderText("z.B. Mustermann")
+        name_right.addWidget(self.vcard_last_name)
+        name_row.addLayout(name_left)
+        name_row.addLayout(name_right)
+        vcard_layout.addLayout(name_row)
+
+        vcard_layout.addWidget(QLabel("Firma / Organisation:"))
+        self.vcard_org = QLineEdit()
+        self.vcard_org.setPlaceholderText("z.B. Musterfirma GmbH")
+        vcard_layout.addWidget(self.vcard_org)
+
+        contact_row = QHBoxLayout()
+        phone_box = QVBoxLayout()
+        phone_box.addWidget(QLabel("Telefon:"))
+        self.vcard_phone = QLineEdit()
+        self.vcard_phone.setPlaceholderText("+49 170 1234567")
+        phone_box.addWidget(self.vcard_phone)
+        email_box = QVBoxLayout()
+        email_box.addWidget(QLabel("E-Mail:"))
+        self.vcard_email = QLineEdit()
+        self.vcard_email.setPlaceholderText("max@example.com")
+        email_box.addWidget(self.vcard_email)
+        contact_row.addLayout(phone_box)
+        contact_row.addLayout(email_box)
+        vcard_layout.addLayout(contact_row)
+
+        vcard_layout.addWidget(QLabel("Webseite (URL):"))
+        self.vcard_url = QLineEdit()
+        self.vcard_url.setPlaceholderText("https://example.com")
+        vcard_layout.addWidget(self.vcard_url)
+
+        vcard_layout.addWidget(QLabel("Notiz / Funktion:"))
+        self.vcard_note = QLineEdit()
+        self.vcard_note.setPlaceholderText("z.B. Teamleitung")
+        vcard_layout.addWidget(self.vcard_note)
+
+        vcard_layout.addStretch()
+        self.input_stack.addWidget(vcard_page)
+
+        # Page 3: Email template
+        email_page = QWidget()
+        email_layout = QVBoxLayout(email_page)
+        email_layout.setContentsMargins(0, 0, 0, 0)
+        email_layout.setSpacing(6)
+
+        email_layout.addWidget(QLabel("Empfänger (E-Mail):"))
+        self.email_to = QLineEdit()
+        self.email_to.setPlaceholderText("kontakt@example.com")
+        email_layout.addWidget(self.email_to)
+
+        email_layout.addWidget(QLabel("Betreff:"))
+        self.email_subject = QLineEdit()
+        self.email_subject.setPlaceholderText("Betreff der E-Mail...")
+        email_layout.addWidget(self.email_subject)
+
+        email_layout.addWidget(QLabel("Nachricht:"))
+        self.email_body = QPlainTextEdit()
+        self.email_body.setPlaceholderText("Vorgefertigter E-Mail-Text...")
+        self.email_body.setMaximumHeight(80)
+        email_layout.addWidget(self.email_body)
+
+        email_layout.addStretch()
+        self.input_stack.addWidget(email_page)
 
         left_layout.addWidget(self.input_stack)
 
@@ -206,6 +297,10 @@ class GeneratorTab(QWidget):
         export_row.addWidget(self.btn_save_svg)
         export_layout.addLayout(export_row)
 
+        self.btn_print_card = QPushButton("🖨️ Aufsteller / Kärtchen drucken...")
+        self.btn_print_card.setObjectName("secondaryButton")
+        export_layout.addWidget(self.btn_print_card)
+
         right_layout.addWidget(export_group)
         right_layout.addStretch()
         main_layout.addWidget(right_column, stretch=2)
@@ -213,12 +308,27 @@ class GeneratorTab(QWidget):
     def _connect_signals(self) -> None:
         self.radio_text.toggled.connect(self._on_mode_changed)
         self.radio_wifi.toggled.connect(self._on_mode_changed)
+        self.radio_vcard.toggled.connect(self._on_mode_changed)
+        self.radio_email.toggled.connect(self._on_mode_changed)
 
         self.text_input.textChanged.connect(self._trigger_update)
         self.wifi_ssid.textChanged.connect(self._trigger_update)
         self.wifi_password.textChanged.connect(self._trigger_update)
         self.wifi_security.currentIndexChanged.connect(self._trigger_update)
         self.wifi_hidden.toggled.connect(self._trigger_update)
+
+        self.vcard_first_name.textChanged.connect(self._trigger_update)
+        self.vcard_last_name.textChanged.connect(self._trigger_update)
+        self.vcard_org.textChanged.connect(self._trigger_update)
+        self.vcard_phone.textChanged.connect(self._trigger_update)
+        self.vcard_email.textChanged.connect(self._trigger_update)
+        self.vcard_url.textChanged.connect(self._trigger_update)
+        self.vcard_note.textChanged.connect(self._trigger_update)
+
+        self.email_to.textChanged.connect(self._trigger_update)
+        self.email_subject.textChanged.connect(self._trigger_update)
+        self.email_body.textChanged.connect(self._trigger_update)
+
         self.combo_error.currentIndexChanged.connect(self._trigger_update)
 
         self.btn_dark_color.clicked.connect(self._pick_dark_color)
@@ -228,22 +338,42 @@ class GeneratorTab(QWidget):
         self.btn_copy_clipboard.clicked.connect(self._copy_to_clipboard)
         self.btn_save_png.clicked.connect(self._save_as_png)
         self.btn_save_svg.clicked.connect(self._save_as_svg)
+        self.btn_print_card.clicked.connect(self._open_print_studio)
+
+    def _open_print_studio(self) -> None:
+        payload, ptype, _ = self.get_current_payload()
+        if not payload:
+            QMessageBox.warning(self, "Hinweis", "Bitte gib zuerst Daten für den QR-Code ein.")
+            return
+
+        dialog = CardDialog(
+            qr_data=payload,
+            payload_type=ptype,
+            dark_color=self.dark_color,
+            light_color=self.light_color,
+            parent=self,
+        )
+        dialog.exec()
 
     def _on_mode_changed(self) -> None:
         if self.radio_wifi.isChecked():
             self.input_stack.setCurrentIndex(1)
-            # Switch to High error correction for WiFi/printing by default
-            for i in range(self.combo_error.count()):
-                if self.combo_error.itemData(i) == "h":
-                    self.combo_error.setCurrentIndex(i)
-                    break
+            target_err = "h"
+        elif self.radio_vcard.isChecked():
+            self.input_stack.setCurrentIndex(2)
+            target_err = "m"
+        elif self.radio_email.isChecked():
+            self.input_stack.setCurrentIndex(3)
+            target_err = "m"
         else:
             self.input_stack.setCurrentIndex(0)
-            # Switch back to Medium error correction for text
-            for i in range(self.combo_error.count()):
-                if self.combo_error.itemData(i) == "m":
-                    self.combo_error.setCurrentIndex(i)
-                    break
+            target_err = "m"
+
+        for i in range(self.combo_error.count()):
+            if self.combo_error.itemData(i) == target_err:
+                self.combo_error.setCurrentIndex(i)
+                break
+
         self._trigger_update()
 
     def _create_color_icon(self, color_hex: str) -> QIcon:
@@ -311,6 +441,31 @@ class GeneratorTab(QWidget):
             payload = format_wifi_payload(config)
             title = f"WLAN: {ssid}" if ssid else "WLAN QR-Code"
             return payload, "wifi", title
+
+        if self.radio_vcard.isChecked():
+            config = VCardConfig(
+                first_name=self.vcard_first_name.text().strip(),
+                last_name=self.vcard_last_name.text().strip(),
+                organization=self.vcard_org.text().strip(),
+                phone=self.vcard_phone.text().strip(),
+                email=self.vcard_email.text().strip(),
+                url=self.vcard_url.text().strip(),
+                note=self.vcard_note.text().strip(),
+            )
+            payload = format_vcard_payload(config)
+            full_name = f"{config.first_name} {config.last_name}".strip()
+            title = f"Kontakt: {full_name}" if full_name else "Visitenkarte (vCard)"
+            return payload, "vcard", title
+
+        if self.radio_email.isChecked():
+            config = EmailConfig(
+                to=self.email_to.text().strip(),
+                subject=self.email_subject.text().strip(),
+                body=self.email_body.toPlainText().strip(),
+            )
+            payload = format_email_payload(config)
+            title = f"E-Mail: {config.to}" if config.to else "E-Mail QR-Code"
+            return payload, "email", title
 
         text = self.text_input.toPlainText().strip()
         payload_type = "url" if text.startswith(("http://", "https://")) else "text"
@@ -444,4 +599,24 @@ class GeneratorTab(QWidget):
         else:
             self.wifi_security.setCurrentIndex(2)
         self.wifi_hidden.setChecked(config.hidden)
+        self._trigger_update()
+
+    def load_vcard_data(self, config: VCardConfig) -> None:
+        """Pre-populate the vCard form with existing VCardConfig."""
+        self.radio_vcard.setChecked(True)
+        self.vcard_first_name.setText(config.first_name)
+        self.vcard_last_name.setText(config.last_name)
+        self.vcard_org.setText(config.organization)
+        self.vcard_phone.setText(config.phone)
+        self.vcard_email.setText(config.email)
+        self.vcard_url.setText(config.url)
+        self.vcard_note.setText(config.note)
+        self._trigger_update()
+
+    def load_email_data(self, config: EmailConfig) -> None:
+        """Pre-populate the Email form with existing EmailConfig."""
+        self.radio_email.setChecked(True)
+        self.email_to.setText(config.to)
+        self.email_subject.setText(config.subject)
+        self.email_body.setPlainText(config.body)
         self._trigger_update()

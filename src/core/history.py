@@ -1,7 +1,9 @@
 """Local history manager for scanned and generated QR codes."""
 
+import csv
 import json
 import os
+import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -16,7 +18,7 @@ class HistoryItem:
     id: str
     timestamp: str
     action: str  # "scan" or "generate"
-    payload_type: str  # "text", "url", "wifi"
+    payload_type: str  # "text", "url", "wifi", "vcard", "email", "geo"
     title: str
     raw_text: str
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -34,11 +36,17 @@ def get_default_history_path() -> Path:
 
 
 class HistoryManager:
-    """Manages persistent history storage."""
+    """Manages persistent history storage with privacy masking and export capabilities."""
 
-    def __init__(self, storage_path: Path | None = None, max_items: int = 20):
+    def __init__(
+        self,
+        storage_path: Path | None = None,
+        max_items: int = 20,
+        mask_passwords: bool = False,
+    ):
         self.storage_path = storage_path or get_default_history_path()
         self.max_items = max_items
+        self.mask_passwords = mask_passwords
         self._ensure_storage()
 
     def _ensure_storage(self) -> None:
@@ -91,18 +99,27 @@ class HistoryManager:
         metadata: dict[str, Any] | None = None,
     ) -> HistoryItem:
         """Add a new item to history and prune if exceeding max_items."""
+        meta = dict(metadata or {})
+        stored_text = raw_text
+
+        # Privacy feature: mask WiFi password if enabled
+        if self.mask_passwords and payload_type == "wifi":
+            # Mask P:value; in raw_text
+            stored_text = re.sub(r"P:(?:\\.|[^;])*(;)", r"P:***\1", stored_text)
+            if meta.get("password"):
+                meta["password"] = "***"
+
         item = HistoryItem(
             id=str(uuid.uuid4()),
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             action=action,
             payload_type=payload_type,
             title=title,
-            raw_text=raw_text,
-            metadata=metadata or {},
+            raw_text=stored_text,
+            metadata=meta,
         )
 
         records = self._read_records()
-        # Insert at the beginning (newest first)
         records.insert(0, asdict(item))
 
         # Enforce max items
@@ -124,3 +141,29 @@ class HistoryManager:
             self._write_records(new_records)
             return True
         return False
+
+    def export_to_csv(self, target_path: Path) -> None:
+        """Export all history items to a CSV file."""
+        items = self.get_items()
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(["ID", "Zeitstempel", "Aktion", "Typ", "Titel", "Inhalt"])
+            for item in items:
+                writer.writerow(
+                    [
+                        item.id,
+                        item.timestamp,
+                        item.action,
+                        item.payload_type,
+                        item.title,
+                        item.raw_text,
+                    ]
+                )
+
+    def export_to_json(self, target_path: Path) -> None:
+        """Export all history items to a JSON file."""
+        records = self._read_records()
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2, ensure_ascii=False)

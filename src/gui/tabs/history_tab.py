@@ -1,11 +1,17 @@
-"""History tab displaying recent scans and generations with quick actions."""
+"""History tab displaying recent scans and generations with search, filtering, and export."""
+
+from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -19,7 +25,7 @@ from src.core.history import HistoryItem, HistoryManager
 
 
 class HistoryTab(QWidget):
-    """Tab widget for viewing and managing saved QR code activity."""
+    """Tab widget for viewing, filtering, searching, and exporting QR code activity."""
 
     status_message = Signal(str, int)
 
@@ -27,6 +33,7 @@ class HistoryTab(QWidget):
         super().__init__(parent)
         self.history_manager = history_manager
         self.items: list[HistoryItem] = []
+        self.filtered_items: list[HistoryItem] = []
 
         self._setup_ui()
         self._connect_signals()
@@ -35,7 +42,7 @@ class HistoryTab(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setSpacing(12)
 
         # Top Header Bar
         header_layout = QHBoxLayout()
@@ -43,6 +50,14 @@ class HistoryTab(QWidget):
         self.header_label.setStyleSheet("font-size: 15px; font-weight: bold;")
         header_layout.addWidget(self.header_label)
         header_layout.addStretch()
+
+        self.check_mask_passwords = QCheckBox("WLAN-Passwörter maskieren")
+        self.check_mask_passwords.setChecked(self.history_manager.mask_passwords)
+        header_layout.addWidget(self.check_mask_passwords)
+
+        self.btn_export = QPushButton("📤 Exportieren...")
+        self.btn_export.setObjectName("secondaryButton")
+        header_layout.addWidget(self.btn_export)
 
         self.btn_refresh = QPushButton("↺ Aktualisieren")
         self.btn_refresh.setObjectName("secondaryButton")
@@ -52,6 +67,26 @@ class HistoryTab(QWidget):
         self.btn_clear.setObjectName("dangerButton")
         header_layout.addWidget(self.btn_clear)
         layout.addLayout(header_layout)
+
+        # Search & Filter Toolbar
+        filter_layout = QHBoxLayout()
+        filter_layout.setSpacing(10)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Verlauf durchsuchen (Titel, Inhalt)...")
+        filter_layout.addWidget(self.search_input, stretch=3)
+
+        self.type_filter = QComboBox()
+        self.type_filter.addItem("Alle Typen", "all")
+        self.type_filter.addItem("WLAN", "wifi")
+        self.type_filter.addItem("Webadresse (URL)", "url")
+        self.type_filter.addItem("Visitenkarte (vCard)", "vcard")
+        self.type_filter.addItem("E-Mail", "email")
+        self.type_filter.addItem("Standort (Geo)", "geo")
+        self.type_filter.addItem("Text", "text")
+        filter_layout.addWidget(self.type_filter, stretch=1)
+
+        layout.addLayout(filter_layout)
 
         # History List
         self.list_widget = QListWidget()
@@ -86,10 +121,21 @@ class HistoryTab(QWidget):
 
     def _connect_signals(self) -> None:
         self.btn_refresh.clicked.connect(self.refresh_history)
+        self.btn_export.clicked.connect(self._export_history)
         self.btn_clear.clicked.connect(self._confirm_clear)
+        self.check_mask_passwords.toggled.connect(self._on_mask_toggled)
+
+        self.search_input.textChanged.connect(self._apply_filter)
+        self.type_filter.currentIndexChanged.connect(self._apply_filter)
+
         self.list_widget.currentRowChanged.connect(self._on_item_selected)
         self.btn_copy_detail.clicked.connect(self._copy_selected_text)
         self.btn_delete_item.clicked.connect(self._delete_selected_item)
+
+    def _on_mask_toggled(self, checked: bool) -> None:
+        self.history_manager.mask_passwords = checked
+        msg = "Passwort-Maskierung aktiviert" if checked else "Passwort-Maskierung deaktiviert"
+        self.status_message.emit(msg, 2000)
 
     def showEvent(self, event: QShowEvent) -> None:
         """Auto-refresh when switching into the history tab."""
@@ -97,24 +143,51 @@ class HistoryTab(QWidget):
         self.refresh_history()
 
     def refresh_history(self) -> None:
-        """Reload entries from storage and populate the list widget."""
-        self.list_widget.clear()
+        """Reload entries from storage and apply current filters."""
         self.items = self.history_manager.get_items()
+        self._apply_filter()
 
-        count = len(self.items)
+    def _apply_filter(self) -> None:
+        """Filter items by search query and type filter."""
+        self.list_widget.clear()
+
+        query = self.search_input.text().strip().lower()
+        sel_type = self.type_filter.currentData() or "all"
+
+        self.filtered_items = []
+        for item in self.items:
+            # Check type filter
+            if sel_type != "all" and item.payload_type != sel_type:
+                continue
+            # Check query filter
+            if query and query not in item.title.lower() and query not in item.raw_text.lower():
+                continue
+            self.filtered_items.append(item)
+
+        count = len(self.filtered_items)
+        total = len(self.items)
         max_limit = self.history_manager.max_items
-        self.header_label.setText(
-            f"Zuletzt erstellte und gescannte QR-Codes ({count} von max. {max_limit})"
-        )
 
-        if not self.items:
-            empty_item = QListWidgetItem("Keine Einträge im Verlauf vorhanden.")
+        if query or sel_type != "all":
+            self.header_label.setText(f"Gefilterte Einträge ({count} von {total})")
+        else:
+            self.header_label.setText(
+                f"Zuletzt erstellte und gescannte QR-Codes ({total} von max. {max_limit})"
+            )
+
+        if not self.filtered_items:
+            empty_msg = (
+                "Keine passenden Einträge für den Filter gefunden."
+                if total > 0
+                else "Keine Einträge im Verlauf vorhanden."
+            )
+            empty_item = QListWidgetItem(empty_msg)
             empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
             self.list_widget.addItem(empty_item)
             self._clear_details()
             return
 
-        for item in self.items:
+        for item in self.filtered_items:
             action_symbol = "📥 Gelesen" if item.action == "scan" else "⚡ Erstellt"
             type_symbol = item.payload_type.upper()
             display_text = f"[{action_symbol} | {type_symbol}]  {item.title}  —  {item.timestamp}"
@@ -122,12 +195,12 @@ class HistoryTab(QWidget):
             list_item = QListWidgetItem(display_text)
             self.list_widget.addItem(list_item)
 
-        # Select first item by default
+        # Select first item
         self.list_widget.setCurrentRow(0)
 
     def _on_item_selected(self, row: int) -> None:
-        if 0 <= row < len(self.items):
-            item = self.items[row]
+        if 0 <= row < len(self.filtered_items):
+            item = self.filtered_items[row]
             self.detail_text.setPlainText(item.raw_text)
             self.btn_copy_detail.setEnabled(True)
             self.btn_delete_item.setEnabled(True)
@@ -147,8 +220,8 @@ class HistoryTab(QWidget):
 
     def _delete_selected_item(self) -> None:
         row = self.list_widget.currentRow()
-        if 0 <= row < len(self.items):
-            item = self.items[row]
+        if 0 <= row < len(self.filtered_items):
+            item = self.filtered_items[row]
             self.history_manager.delete_item(item.id)
             self.refresh_history()
             self.status_message.emit("Eintrag gelöscht", 2000)
@@ -165,3 +238,24 @@ class HistoryTab(QWidget):
             self.history_manager.clear_history()
             self.refresh_history()
             self.status_message.emit("Verlauf wurde geleert.", 3000)
+
+    def _export_history(self) -> None:
+        if not self.items:
+            QMessageBox.information(
+                self, "Hinweis", "Keine Einträge im Verlauf zum Exportieren vorhanden."
+            )
+            return
+
+        file_path, sel_filter = QFileDialog.getSaveFileName(
+            self,
+            "Verlauf exportieren",
+            "qr_verlauf.csv",
+            "CSV-Tabelle (*.csv);;JSON-Datei (*.json)",
+        )
+        if file_path:
+            p = Path(file_path)
+            if p.suffix.lower() == ".json" or "json" in sel_filter.lower():
+                self.history_manager.export_to_json(p)
+            else:
+                self.history_manager.export_to_csv(p)
+            self.status_message.emit(f"Verlauf exportiert: {p.name}", 3000)

@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.0.0
+
+- 2026-10-26 (cfe641d): feat: add new smart formats for personal information cards, email templates and geo-coordinates, feat: add converter and reader, add ui elements, feat: add print ready card generator to print the codes batchwise, fix: add security check option to not save wlan information in the history as plaintext, add search, filter and export functions, feat: extend test suites
+
 ## SemVer v0.3.1
 
-- 2026-10-26 (1dc1bf8): fix: fix light theme not having uniform light background on ui elements, fix: fix light theme having unreadable label texts in the menu
+- 2026-10-26 (317d074): fix: fix light theme not having uniform light background on ui elements, fix: fix light theme having unreadable label texts in the menu
 
 ## SemVer v0.3.0
 

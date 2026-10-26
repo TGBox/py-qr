@@ -61,3 +61,48 @@ def test_history_clear():
         manager.clear_history()
         assert len(manager.get_items()) == 0
         assert file_path.exists()
+
+
+def test_history_mask_password(tmp_path):
+    file_path = tmp_path / "test_history.json"
+    manager = HistoryManager(storage_path=file_path, mask_passwords=True)
+
+    manager.add_item(
+        action="scan",
+        payload_type="wifi",
+        title="WLAN SecretNet",
+        raw_text="WIFI:T:WPA;S:SecretNet;P:TopSecretPassword;H:false;;",
+        metadata={"ssid": "SecretNet", "password": "TopSecretPassword"},
+    )
+
+    items = manager.get_items()
+    assert len(items) == 1
+    assert "TopSecretPassword" not in items[0].raw_text
+    assert "P:***;" in items[0].raw_text
+    assert items[0].metadata.get("password") == "***"
+
+
+def test_history_export_csv_and_json(tmp_path):
+    file_path = tmp_path / "test_history.json"
+    manager = HistoryManager(storage_path=file_path)
+
+    manager.add_item("generate", "url", "https://example.com", "https://example.com")
+    manager.add_item("scan", "text", "Notiz", "Mein geheimer Text")
+
+    # CSV Export
+    csv_file = tmp_path / "export.csv"
+    manager.export_to_csv(csv_file)
+    assert csv_file.exists()
+    csv_text = csv_file.read_text(encoding="utf-8")
+    assert "Zeitstempel" in csv_text
+    assert "https://example.com" in csv_text
+    assert "Mein geheimer Text" in csv_text
+
+    # JSON Export
+    json_file = tmp_path / "export.json"
+    manager.export_to_json(json_file)
+    assert json_file.exists()
+    import json
+
+    data = json.loads(json_file.read_text(encoding="utf-8"))
+    assert len(data) == 2
