@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -59,7 +60,8 @@ class HistoryTab(QWidget):
         self.btn_export.setObjectName("secondaryButton")
         header_layout.addWidget(self.btn_export)
 
-        self.btn_refresh = QPushButton("↺ Aktualisieren")
+        self.btn_refresh = QPushButton("Aktualisieren")
+        self.btn_refresh.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
         self.btn_refresh.setObjectName("secondaryButton")
         header_layout.addWidget(self.btn_refresh)
 
