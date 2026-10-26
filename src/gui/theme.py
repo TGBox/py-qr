@@ -374,6 +374,36 @@ QScrollBar::handle:horizontal:hover {
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     width: 0px;
 }
+
+/* Tables */
+QTableWidget {
+    background-color: #1e293b;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    gridline-color: #334155;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+}
+
+QTableWidget::item {
+    padding: 6px 10px;
+    border-bottom: 1px solid #334155;
+}
+
+QTableWidget::item:selected {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #0f172a;
+    color: #94a3b8;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #334155;
+    font-weight: 600;
+}
 """
 
 LIGHT_STYLESHEET = """
@@ -747,6 +777,36 @@ QScrollBar::handle:horizontal:hover {
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     width: 0px;
+}
+
+/* Tables */
+QTableWidget {
+    background-color: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    gridline-color: #e2e8f0;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+}
+
+QTableWidget::item {
+    padding: 6px 10px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+QTableWidget::item:selected {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #cbd5e1;
+    font-weight: 600;
 }
 """
 

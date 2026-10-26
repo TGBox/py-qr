@@ -35,7 +35,7 @@ from src.core.parser import (
     format_vcard_payload,
     format_wifi_payload,
 )
-from src.gui.dialogs.card_dialog import CardDialog
+from src.gui.dialogs import BatchDialog, CardDialog
 from src.gui.workers import GenerateWorker
 
 
@@ -332,6 +332,10 @@ class GeneratorTab(QWidget):
         self.btn_print_card.setObjectName("secondaryButton")
         export_layout.addWidget(self.btn_print_card)
 
+        self.btn_batch = QPushButton("📦 Stapelverarbeitung...")
+        self.btn_batch.setObjectName("secondaryButton")
+        export_layout.addWidget(self.btn_batch)
+
         right_layout.addWidget(export_group)
         right_layout.addStretch()
         main_layout.addWidget(right_column, stretch=2)
@@ -373,6 +377,7 @@ class GeneratorTab(QWidget):
         self.btn_save_png.clicked.connect(self._save_as_png)
         self.btn_save_svg.clicked.connect(self._save_as_svg)
         self.btn_print_card.clicked.connect(self._open_print_studio)
+        self.btn_batch.clicked.connect(self.open_batch_studio)
 
     def _open_print_studio(self) -> None:
         payload, ptype, _ = self.get_current_payload()
@@ -396,6 +401,29 @@ class GeneratorTab(QWidget):
             logo_image_path=logo_path,
             parent=self,
         )
+        dialog.exec()
+
+    def open_batch_studio(self) -> None:
+        """Open batch processing studio dialog with current styling parameters."""
+        shape = self.combo_shape.currentData() or "square"
+        logo_data = self.combo_logo.currentData()
+        logo_icon = logo_data if logo_data not in (None, "custom") else None
+        logo_path = self.custom_logo_path if logo_data == "custom" else None
+        error_level = self.combo_error.currentData() or "m"
+
+        dialog = BatchDialog(
+            error_level=error_level,
+            dark_color=self.dark_color,
+            light_color=self.light_color,
+            shape=shape,
+            finder_color=self.finder_color,
+            logo_icon=logo_icon,
+            logo_image_path=logo_path,
+            parent=self,
+        )
+        payload, _, _ = self.get_current_payload()
+        if payload and not dialog.input_text.toPlainText():
+            dialog.input_text.setPlainText(payload)
         dialog.exec()
 
     def _on_mode_changed(self) -> None:

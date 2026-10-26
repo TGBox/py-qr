@@ -86,6 +86,17 @@ class MainWindow(QMainWindow):
 
         # Menu: Datei
         file_menu = menubar.addMenu("&Datei")
+
+        batch_action = QAction("&Stapelverarbeitung...", self)
+        batch_action.setShortcut(QKeySequence("Ctrl+B"))
+        batch_action.setStatusTip(
+            "Mehrere QR-Codes aus CSV/Liste erstellen und als ZIP oder PDF exportieren"
+        )
+        batch_action.triggered.connect(self._open_batch_dialog)
+        file_menu.addAction(batch_action)
+
+        file_menu.addSeparator()
+
         exit_action = QAction("&Beenden", self)
         exit_action.setShortcut(QKeySequence("Ctrl+Q"))
         exit_action.setStatusTip("Anwendung beenden")
@@ -139,6 +150,10 @@ class MainWindow(QMainWindow):
         theme_display = "Dunkel" if theme_name == "dark" else "Hell"
         self.status_bar.showMessage(f"Farbschema gewechselt: {theme_display}", 2000)
 
+    def _open_batch_dialog(self) -> None:
+        """Open the batch QR processing studio dialog."""
+        self.generator_tab.open_batch_studio()
+
     def _show_about_dialog(self) -> None:
         QMessageBox.about(
             self,
@@ -149,6 +164,7 @@ class MainWindow(QMainWindow):
             "<p><b>Version:</b> 0.2.0<br>"
             "<b>Tastenkürzel:</b><br>"
             "- <code>F11</code>: Vollbild umschalten<br>"
+            "- <code>Strg+B</code>: Stapelverarbeitung (Batch-Studio)<br>"
             "- <code>Strg+V</code>: QR-Code aus Zwischenablage dekodieren<br>"
             "- <code>Strg+Q</code>: Beenden</p>",
         )
