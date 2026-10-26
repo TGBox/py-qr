@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.2.0
+
+- 2026-10-26 (3892724): feat: Add batch QR processing studio with dual export (ZIP & A4 PDF)
+
 ## SemVer v1.1.1
 
-- 2026-10-26 (28ffd06): fix: fix label text not rendering correctly for resetting the artistic settings
+- 2026-10-26 (0ab4d01): fix: fix label text not rendering correctly for resetting the artistic settings
 
 ## SemVer v1.1.0
 

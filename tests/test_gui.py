@@ -304,3 +304,72 @@ def test_card_dialog_with_artistic_styles(qtbot):
     assert dialog.finder_color == "#2563eb"
     assert dialog.logo_icon == "star"
     assert dialog.preview_label.pixmap() is not None
+
+
+def test_batch_dialog_parsing_and_ui(qtbot):
+    from src.gui.dialogs.batch_dialog import BatchDialog
+
+    dialog = BatchDialog(shape="dot", finder_color="#10b981")
+    qtbot.addWidget(dialog)
+
+    assert "Stapelverarbeitung" in dialog.windowTitle()
+    assert not dialog.btn_start.isEnabled()
+    assert dialog.table_preview.rowCount() == 0
+
+    # Type input text and parse
+    dialog.input_text.setPlainText(
+        "https://example.com/one;Erste Seite\nhttps://example.com/two;Zweite Seite\n"
+    )
+    dialog._parse_and_refresh_table()
+
+    assert len(dialog.items) == 2
+    assert dialog.btn_start.isEnabled()
+    assert dialog.table_preview.rowCount() == 2
+    assert dialog.table_preview.item(0, 1).text() == "https://example.com/one"
+    assert dialog.table_preview.item(0, 2).text() == "Erste Seite"
+
+    # Switch to PDF mode
+    dialog.radio_pdf.setChecked(True)
+    dialog._update_format_visibility()
+    assert dialog.combo_layout.isEnabled()
+    assert not dialog.combo_format.isEnabled()
+
+    # Clear input
+    dialog._clear_input()
+    assert len(dialog.items) == 0
+    assert not dialog.btn_start.isEnabled()
+    assert dialog.table_preview.rowCount() == 0
+
+
+def test_batch_worker_execution(qtbot, tmp_path):
+    from src.core.batch_processor import BatchItem
+    from src.gui.workers import BatchWorker
+
+    items = [
+        BatchItem("https://py-qr.org/1", "Item 1"),
+        BatchItem("https://py-qr.org/2", "Item 2"),
+    ]
+    target_zip = tmp_path / "out_worker.zip"
+
+    worker = BatchWorker(
+        items=items,
+        target_path=target_zip,
+        mode="zip",
+        format_type="png",
+    )
+
+    with qtbot.waitSignal(worker.success, timeout=5000):
+        worker.start()
+
+    assert target_zip.exists()
+    assert target_zip.stat().st_size > 0
+
+
+def test_generator_tab_batch_integration(qtbot, tmp_path):
+    history_file = tmp_path / "test_history.json"
+    manager = HistoryManager(storage_path=history_file)
+    tab = GeneratorTab(history_manager=manager)
+    qtbot.addWidget(tab)
+
+    assert hasattr(tab, "btn_batch")
+    assert "Stapelverarbeitung" in tab.btn_batch.text()
