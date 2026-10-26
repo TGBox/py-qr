@@ -120,3 +120,31 @@ def test_history_tab_display_and_clear(qtbot, tmp_path):
     assert tab.list_widget.count() == 1
     assert "Keine Einträge" in tab.list_widget.item(0).text()
     assert not tab.btn_copy_detail.isEnabled()
+
+
+def test_light_and_dark_theme_palettes(qtbot, tmp_path):
+    from PySide6.QtGui import QPalette
+    from PySide6.QtWidgets import QApplication
+
+    history_file = tmp_path / "test_history.json"
+    manager = HistoryManager(storage_path=history_file)
+    window = MainWindow(history_manager=manager)
+    qtbot.addWidget(window)
+    app = QApplication.instance()
+
+    # Apply Light Theme
+    window.set_theme("light")
+    palette = app.palette()
+    assert palette.color(QPalette.ColorRole.Window).name() == "#f8fafc"
+    assert palette.color(QPalette.ColorRole.Base).name() == "#ffffff"
+    assert palette.color(QPalette.ColorRole.Text).name() == "#0f172a"
+    # Ensure generator tab color button has icon and no hardcoded dark inline background
+    assert not window.generator_tab.btn_dark_color.icon().isNull()
+    assert "background-color" not in window.generator_tab.btn_dark_color.styleSheet()
+
+    # Apply Dark Theme
+    window.set_theme("dark")
+    palette = app.palette()
+    assert palette.color(QPalette.ColorRole.Window).name() == "#0f172a"
+    assert palette.color(QPalette.ColorRole.Base).name() == "#1e293b"
+    assert palette.color(QPalette.ColorRole.Text).name() == "#f8fafc"

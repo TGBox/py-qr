@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QImage, QPixmap
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -246,12 +246,24 @@ class GeneratorTab(QWidget):
                     break
         self._trigger_update()
 
-    def _update_color_button(self, btn: QPushButton, color_hex: str, label: str) -> None:
-        text_color = (
-            "#ffffff" if color_hex.lower() in ("#000000", "#1e293b", "#0f172a") else "#000000"
+    def _create_color_icon(self, color_hex: str) -> QIcon:
+        """Create a 16x16 color swatch icon with a subtle border for contrast."""
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(QColor(color_hex))
+        painter = QPainter(pixmap)
+        border_color = (
+            QColor("#94a3b8") if color_hex.lower() in ("#ffffff", "#fff") else QColor("#475569")
         )
-        btn.setStyleSheet(f"background-color: {color_hex}; color: {text_color}; font-weight: bold;")
+        painter.setPen(QPen(border_color, 1))
+        painter.drawRect(0, 0, 15, 15)
+        painter.end()
+        return QIcon(pixmap)
+
+    def _update_color_button(self, btn: QPushButton, color_hex: str, label: str) -> None:
+        """Update button label and color swatch icon without breaking light/dark styling."""
+        btn.setIcon(self._create_color_icon(color_hex))
         btn.setText(f"{label}: {color_hex.upper()}")
+        btn.setStyleSheet("")
 
     def _pick_dark_color(self) -> None:
         color = QColorDialog.getColor(QColor(self.dark_color), self, "Vordergrundfarbe wählen")
