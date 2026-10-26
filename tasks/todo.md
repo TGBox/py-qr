@@ -202,9 +202,24 @@
 
 ---
 
-### Checkpoint: Final Release [x]
+## Phase 5: Artistic QR Code Styling
 
-- [x] Executable builds cleanly and runs independently.
-- [x] Code formatted with `uv run ruff format .` and passes `uv run ruff check .`.
+### Task 13: Artistic Generator & UI Integration (`artistic-qr`) [x]
+
+- **Description:** Implement custom module shapes (square, dots, rounded), custom corner eye colors (`finder_color`), and central logo emblems (presets for WLAN, Contact, Mail, Web, Star, and custom image file upload) with guaranteed 100% scanner compatibility via `zxing-cpp`.
+- **Acceptance criteria:**
+  - [x] `generate_qr_png_bytes` and `generate_qr_svg` support `shape="square" | "dot" | "rounded"`, `finder_color`, `logo_icon`, and `logo_image_path`.
+  - [x] Solid finder pattern modules guarantee 100% barcode detection rate.
+  - [x] Preset vector icons (WLAN, Contact, Mail, Web, Star) drawn cleanly with protective backing in light color.
+  - [x] Automatic elevation to error correction Level `H` (30% redundancy) when an emblem/logo is active.
+  - [x] `GeneratorTab` includes interactive controls for shape, corner eye color picker, and emblem dropdown with live preview.
+  - [x] `CardDialog` and printable stand export inherit the chosen artistic styling.
+  - [x] Standalone executable `dist/py-qr.exe` rebuilt and verified.
+- **Verification:**
+  - `uv run pytest` (49 passed)
+  - `uv run ruff check .`
+- **Dependencies:** Tasks 3, 7, 9, 12
+- **Files touched:** `src/core/generator.py`, `src/gui/workers.py`, `src/gui/tabs/generator_tab.py`, `src/core/card_printer.py`, `src/gui/dialogs/card_dialog.py`, `tests/test_generator.py`, `tests/test_gui.py`
+- **Scope:** M (7 files)
 
 ---

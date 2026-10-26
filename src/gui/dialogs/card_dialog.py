@@ -38,6 +38,10 @@ class CardDialog(QDialog):
         payload_type: str,
         dark_color: str = "#000000",
         light_color: str = "#ffffff",
+        shape: str = "square",
+        finder_color: str | None = None,
+        logo_icon: str | None = None,
+        logo_image_path: Path | str | None = None,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
@@ -45,6 +49,10 @@ class CardDialog(QDialog):
         self.payload_type = payload_type
         self.dark_color = dark_color
         self.light_color = light_color
+        self.shape = shape
+        self.finder_color = finder_color
+        self.logo_icon = logo_icon
+        self.logo_image_path = logo_image_path
 
         self.setWindowTitle("🖨️ Aufsteller & Kärtchen-Studio")
         self.resize(760, 560)
@@ -194,6 +202,10 @@ class CardDialog(QDialog):
             page_size=page_size,
             dark_color=self.dark_color,
             light_color=self.light_color,
+            shape=self.shape,
+            finder_color=self.finder_color,
+            logo_icon=self.logo_icon,
+            logo_image_path=self.logo_image_path,
         )
 
     def _update_preview(self) -> None:
