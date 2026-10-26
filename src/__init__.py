@@ -1,0 +1,1 @@
+"""py-qr package."""
