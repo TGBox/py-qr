@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QStackedWidget,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -236,12 +237,6 @@ class GeneratorTab(QWidget):
         self.btn_finder_color.setObjectName("secondaryButton")
         self._update_finder_color_button()
         colors_layout.addWidget(self.btn_finder_color)
-
-        self.btn_reset_colors = QPushButton("↺")
-        self.btn_reset_colors.setObjectName("secondaryButton")
-        self.btn_reset_colors.setToolTip("Gestaltung und Farben zurücksetzen")
-        self.btn_reset_colors.setMaximumWidth(36)
-        colors_layout.addWidget(self.btn_reset_colors)
         style_layout.addLayout(colors_layout)
 
         # Module Shape & Logo Options
@@ -273,7 +268,15 @@ class GeneratorTab(QWidget):
         self.combo_error.addItem("Q (25% — Robust)", "q")
         self.combo_error.addItem("H (30% — Maximal / Logo)", "h")
         self.combo_error.setCurrentIndex(0)
-        error_layout.addWidget(self.combo_error)
+        error_layout.addWidget(self.combo_error, stretch=1)
+
+        self.btn_reset_colors = QPushButton("Zurücksetzen")
+        self.btn_reset_colors.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload)
+        )
+        self.btn_reset_colors.setObjectName("secondaryButton")
+        self.btn_reset_colors.setToolTip("Gestaltung und Farben auf Standard zurücksetzen")
+        error_layout.addWidget(self.btn_reset_colors)
         style_layout.addLayout(error_layout)
 
         left_layout.addWidget(style_group)

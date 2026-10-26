@@ -1,6 +1,6 @@
 [project]
 name = "py-qr"
-version = "1.1.0"
+version = "1.1.1"
 description = "A python app to generate and read QR-codes."
 requires-python = ">=3.11"
 license = { text = "MIT" }
