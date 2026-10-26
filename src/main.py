@@ -1,22 +1,21 @@
+"""Entry point for the py-qr desktop application."""
+
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel
-from PySide6.QtCore import Qt
 
+from PySide6.QtWidgets import QApplication
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("py-qr")
-        self.resize(800, 600)
-        label = QLabel("Hallo aus py-qr!", alignment=Qt.AlignmentFlag.AlignCenter)
-        self.setCentralWidget(label)
+from src.gui.main_window import MainWindow
 
 
 def main() -> None:
     app = QApplication(sys.argv)
+    app.setApplicationName("py-qr")
+    app.setOrganizationName("TGBox")
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

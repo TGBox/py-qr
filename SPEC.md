@@ -97,17 +97,21 @@ from typing import Optional
 import zxingcpp
 from PIL import Image
 
+
 class PayloadType(Enum):
     URL = "url"
     WIFI = "wifi"
     TEXT = "text"
 
+
 @dataclass
 class ScanResult:
     """Represents the decoded QR code result."""
+
     raw_text: str
     payload_type: PayloadType
     metadata: dict[str, str]
+
 
 def decode_qr(image_path: Path) -> Optional[ScanResult]:
     """Decode a QR code from a file without blocking UI."""
