@@ -3,6 +3,5 @@ __pycache__/
 .venv/
 build/
 dist/
-*.spec
 .ruff_cache/
 .pytest_cache/
